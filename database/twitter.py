@@ -10,17 +10,20 @@ class Twitter:
 	def __init__(self, db):
 		self.db = db
 
+	# Recherche d'un tweet par son identifiant
 	def findTweetByID(self, tweetID):
 		query = """SELECT * FROM Tweets WHERE TweetID = %s"""
 		params = (tweetID)
 		row = self.db.executeQueryWithSingleResult(query,params)
 		return self.__generateTweet(row)
 
+	# Récupérer un tweet qui est dans l'état non traité
 	def getTweetUntreated(self):
 		query = """SELECT * FROM Tweets WHERE Treated = 0 LIMIT 1"""
 		row = self.db.executeQueryWithSingleResult(query)
 		return self.__generateTweet(row)
 
+	# Recherche des commentaires associés à un tweet
 	def findCommentByTweetID(self, tweetID):
 		query = "SELECT * FROM Comments WHERE TweetFK = %s"
 		params = (tweetID)
@@ -31,6 +34,7 @@ class Twitter:
 
 		return comments
 
+	# Charger le dictionnaire 
 	def loadDictionnary(self):
 		query = "SELECT * FROM Dictionnary"
 		rows = self.db.executeQueryWithMultipleResults(query)
@@ -40,6 +44,7 @@ class Twitter:
 
 		return dictionnary
 
+	# Marquer un tweet comme étant traité
 	def markTweetAsTreated(self, tweetID):
 		query = "UPDATE Tweets SET Treated = 1 WHERE TweetID = %s"
 		params = (tweetID)
