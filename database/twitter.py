@@ -7,8 +7,9 @@ from dictionnary import *
 
 class Twitter:
 	"""docstring for Twitter"""
-	def __init__(self, db):
+	def __init__(self, db,accountId):
 		self.db = db
+		self.accountID = accountId
 
 	# Recherche d'un tweet par son identifiant
 	def findTweetByID(self, tweetID):
@@ -19,9 +20,19 @@ class Twitter:
 
 	# Récupérer un tweet qui est dans l'état non traité
 	def getTweetUntreated(self):
-		query = """SELECT * FROM Tweets WHERE Treated = 0 LIMIT 1"""
-		row = self.db.executeQueryWithSingleResult(query)
+		query = """SELECT * FROM Tweets WHERE Treated = 0 AND AccountFK = %s LIMIT 1"""
+		params = (self.accountID)
+		row = self.db.executeQueryWithSingleResult(query,params)
 		return self.__generateTweet(row)
+		
+	def getSeveralTweetsUntreated(self,nbTweets):
+		query = "SELECT * FROM Tweets WHERE Treated = 0 AND AccountFK = %s LIMIT %s"
+		params = (self.accountID,nbTweets)
+		rows = self.db.executeQueryWithMultipleResults(query,params)
+		tweets = list()
+		for row in rows:
+			tweets.append(self.__generateTweet(row))
+		return tweets
 
 	# Recherche des commentaires associés à un tweet
 	def findCommentByTweetID(self, tweetID):
@@ -33,6 +44,12 @@ class Twitter:
 			comments.append(self.__generateComment(row))
 
 		return comments
+		
+	def findNbTweets(self):
+		query = "SELECT COUNT(*) FROM Tweets WHERE AccountFK = %s"
+		params = (self.accountID)
+		row = self.db.executeQueryWithSingleResult(query,params)
+		return row[0]
 
 	# Charger le dictionnaire 
 	def loadDictionnary(self):

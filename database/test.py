@@ -6,19 +6,27 @@ from twitter import *
 
 
 
-db = DataStorage('localhost','root','erperra4','twitter')
+db = DataStorage('localhost','root','','twitter')
 
-twitter = Twitter(db)
+twitter = Twitter(db,24744541)
 
 tweet = twitter.findTweetByID(371648193660190720)
 tweet.show()
 
-comments = twitter.findCommentByTweetID(tweet.tweetID)
-for comment in comments:
-	comment.show()
+
+#comments = twitter.findCommentByTweetID(tweet.tweetID)
+#for comment in comments:
+#	comment.show()
+
+print '#############################'	
+tweet =  twitter.getTweetUntreated()
+tweet.show()
+
+print twitter.findNbTweets()
 
 #twitter.markTweetAsTreated(347242449497907200)
 
+print '*****************************'
 dictionnary = twitter.loadDictionnary()
 for word in dictionnary:
 	word.show()

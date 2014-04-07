@@ -3,12 +3,13 @@
 from sklearn import svm,datasets
 
 import numpy as np
-import pylab as pl
+import re
 
 class ClassifierSVM():
-	def __init__(self,kernelFuncName,g,c,dbConnector):
+	def __init__(self,kernelFuncName,g,c,twitter):
 		self.svm = svm.SVC(kernel = kernelFuncName,gamma=g,C=c)
-		self.dbConnector = dbConnector
+		# twitter: DB Connnector
+		self.twitter = twitter
 		self.data = []
 		self.target = []
 		self.model = None
@@ -16,11 +17,32 @@ class ClassifierSVM():
 	# methode pour construire les donnees d'apprentissage
 	# ratio: rapport sur l'ensemble de donnee d'apprentissage
 	def getDataApprentissage(self,ratio):
+		nbApprentissage = int(round(self.twitter.findNbTweets()*ratio));
+		tweets = self.twitter.getSeveralTweetsUntreated(nbApprentissage)
+		for tweet in tweets:
+			print '************'
+			#print tweet.contentRaw
+			self.analysePhrase(tweet.contentRaw)
+			comments = self.twitter.findCommentByTweetID(tweet.tweetID)
+			#for comment in comments:
+				#print '#############'
+				#print comment.contentRaw
+				#self.analysePhrase(comment.contentRaw)
 		return
-		
-	# methode pour analyser un tweet afin de construire X
-	def analyseTweet(self,tweet):
-		return
+	
+	# methode pour analyser une phrase afin de construire X
+	def analysePhrase(self,phrase):
+		words = phrase.split()
+		#regex = re.compile('^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$')
+		for w in words:
+			if w[0] == '@' or w[0] == '#':
+				words.remove(w)
+			if w.find('/') != -1:
+				words.remove(w)
+		for w in words:
+			print w
+	
+		return		
 	
 	# construire le vecteur pour un tweet
 	def rangeDataVector(self,tweet):
@@ -57,22 +79,6 @@ class ClassifierSVM():
 		xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
 		Z = self.model.predict(np.c_[xx.ravel(), yy.ravel()])
 
-		# Put the result into a color plot
-		Z = Z.reshape(xx.shape)
-		pl.figure(1, figsize=(4, 3))
-		pl.pcolormesh(xx, yy, Z, cmap=pl.cm.Paired)
-
-		# Plot also the training points
-		pl.scatter(self.data[:, 0], self.data[:, 1], c=self.target, cmap=pl.cm.Paired)
-		pl.xlabel('Sepal length')
-		pl.ylabel('Sepal width')
-
-		pl.xlim(xx.min(), xx.max())
-		pl.ylim(yy.min(), yy.max())
-		pl.xticks(())
-		pl.yticks(())
-
-		pl.show()
 		
 		return
 	
