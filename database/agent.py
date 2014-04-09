@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 from classifierSVM import *
 from data_storage import *
 from twitter import *

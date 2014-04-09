@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 from sklearn import svm,datasets
@@ -19,30 +20,87 @@ class ClassifierSVM():
 	def getDataApprentissage(self,ratio):
 		nbApprentissage = int(round(self.twitter.findNbTweets()*ratio));
 		tweets = self.twitter.getSeveralTweetsUntreated(nbApprentissage)
+		allWordsFreq = dict()
+		matrixWords = list()
 		for tweet in tweets:
-			print '************'
-			#print tweet.contentRaw
-			self.analysePhrase(tweet.contentRaw)
+			str = ""
+			str = str + tweet.contentRaw + " "
 			comments = self.twitter.findCommentByTweetID(tweet.tweetID)
-			#for comment in comments:
-				#print '#############'
-				#print comment.contentRaw
-				#self.analysePhrase(comment.contentRaw)
+			for comment in comments:
+				str = str + comment.contentRaw + " "
+			# analyser le tweet et les commentaires
+			# TODO: les bugs a corriger
+			listWords = self.analysePhrase(str)
+			matrixWords.append(listWords)
+			for w in listWords:
+				if w in allWordsFreq:
+					allWordsFreq[w] = allWordsFreq[w]+1
+				else:
+					allWordsFreq[w] = 1
+		allWordsFreqSortedKey = sorted(allWordsFreq,key=allWordsFreq.__getitem__,reverse=True)
+		#print len(allWordsFreqSortedKey)
+		
+		map_TFIDF = self.TF_IDF(allWordsFreqSortedKey,matrixWords)
+		'''print allWordsFreqSortedKey[0]
+		print map_TFIDF[allWordsFreqSortedKey[0]]
+		print allWordsFreqSortedKey[1]
+		print map_TFIDF[allWordsFreqSortedKey[1]]
+		print allWordsFreqSortedKey[2]
+		print map_TFIDF[allWordsFreqSortedKey[2]]
+		print allWordsFreqSortedKey[3]
+		print map_TFIDF[allWordsFreqSortedKey[3]]
+		print allWordsFreqSortedKey[4]
+		print map_TFIDF[allWordsFreqSortedKey[4]]
+		print allWordsFreqSortedKey[5]
+		print map_TFIDF[allWordsFreqSortedKey[5]]
+		print allWordsFreqSortedKey[6]
+		print map_TFIDF[allWordsFreqSortedKey[6]]
+		print allWordsFreqSortedKey[7]
+		print map_TFIDF[allWordsFreqSortedKey[7]]
+		print allWordsFreqSortedKey[8]
+		print map_TFIDF[allWordsFreqSortedKey[8]]
+		print allWordsFreqSortedKey[9]
+		print map_TFIDF[allWordsFreqSortedKey[9]]
+		print allWordsFreqSortedKey[10]'''
+		
+		print map_TFIDF
 		return
 	
-	# methode pour analyser une phrase afin de construire X
+	# methode pour analyser une phrase 
+	# enlever les mots non alphabet
 	def analysePhrase(self,phrase):
+		#print '*************Analyser Phrase******************'
 		words = phrase.split()
-		#regex = re.compile('^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$')
+		regex = re.compile(r'(\w)+')
+		wordsReturn = list()
 		for w in words:
-			if w[0] == '@' or w[0] == '#':
-				words.remove(w)
-			if w.find('/') != -1:
-				words.remove(w)
-		for w in words:
-			print w
+			if w[0] is not '@' and w[0] is not'#':
+				if w.find('/') is -1 and regex.match(w) is not None:
+					ww = w.replace('.','').replace(',','').replace('!','').replace('?','')
+					wordsReturn.append(ww)
+			
+				
+		'''print '$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
+		for w in wordsReturn:
+			print w'''
 	
-		return		
+		return wordsReturn
+
+	# calculer les valeurs TF-IDF pour chaque mot par rappot un tweet
+	def TF_IDF(self,keyWords,matrixTweetWords):
+		print '*************TF-IDF******************'
+		mapKeyWords_TFIDF = dict()
+		for key in keyWords:
+			TFs = list()
+			nbTweetOccurrence = 0.0
+			for tweet in matrixTweetWords:
+				if key in tweet:
+					nbTweetOccurrence = nbTweetOccurrence + 1.0
+				TFs.append(tweet.count(key))
+			TFs = [x/nbTweetOccurrence for x in TFs]
+			mapKeyWords_TFIDF[key] = TFs
+		#print mapKeyWords_TFIDF
+		return mapKeyWords_TFIDF
 	
 	# construire le vecteur pour un tweet
 	def rangeDataVector(self,tweet):
