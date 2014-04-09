@@ -3,6 +3,7 @@
 
 from sklearn import svm,datasets
 
+from math import *
 import numpy as np
 import re
 
@@ -41,7 +42,7 @@ class ClassifierSVM():
 		#print len(allWordsFreqSortedKey)
 		
 		map_TFIDF = self.TF_IDF(allWordsFreqSortedKey,matrixWords)
-		'''print allWordsFreqSortedKey[0]
+		print allWordsFreqSortedKey[0]
 		print map_TFIDF[allWordsFreqSortedKey[0]]
 		print allWordsFreqSortedKey[1]
 		print map_TFIDF[allWordsFreqSortedKey[1]]
@@ -61,9 +62,9 @@ class ClassifierSVM():
 		print map_TFIDF[allWordsFreqSortedKey[8]]
 		print allWordsFreqSortedKey[9]
 		print map_TFIDF[allWordsFreqSortedKey[9]]
-		print allWordsFreqSortedKey[10]'''
+		print allWordsFreqSortedKey[10]
 		
-		print map_TFIDF
+		#print map_TFIDF
 		return
 	
 	# methode pour analyser une phrase 
@@ -96,8 +97,8 @@ class ClassifierSVM():
 			for tweet in matrixTweetWords:
 				if key in tweet:
 					nbTweetOccurrence = nbTweetOccurrence + 1.0
-				TFs.append(tweet.count(key))
-			TFs = [x/nbTweetOccurrence for x in TFs]
+				TFs.append(tweet.count(key)/float(len(tweet)))
+			TFs = [x*log(float(len(matrixTweetWords))/nbTweetOccurrence) for x in TFs]
 			mapKeyWords_TFIDF[key] = TFs
 		#print mapKeyWords_TFIDF
 		return mapKeyWords_TFIDF
