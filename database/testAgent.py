@@ -8,4 +8,4 @@ from twitter import *
 db = DataStorage('localhost','root','','twitter')
 twitter = Twitter(db,24744541)
 classifier = ClassifierSVM('rbf',0.5,1,twitter)
-classifier.getDataApprentissage(0.05)
+classifier.buildModel()
