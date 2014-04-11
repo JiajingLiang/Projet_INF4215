@@ -47,8 +47,8 @@ class ClassifierSVM():
 
 		allWordsFreqSortedKey = sorted(allWordsFreq,key=allWordsFreq.__getitem__,reverse=True)
 		
-		print 'longueur mot cle: ',len(allWordsFreqSortedKey)
 		print 'nb de tweet analyse: ',len(matrixWords)
+		print 'longueur mot cle: ',len(allWordsFreqSortedKey)
 		
 		#calculer le poid TF-IDF
 		map_TFIDF = self.TF_IDF(allWordsFreqSortedKey,matrixWords)
@@ -63,6 +63,8 @@ class ClassifierSVM():
 		classe = [0,1,1,2,2,2,1,1,1,1,2,2,1,2,1,0,0]
 		
 		map_IG = self.informationGain(mapExistanceWords,classe)
+		
+		# on choisir les attributs(les mots) qui nous apporte plus information(avec les gains plus grands)
 		valueIGSortedKey = sorted(map_IG,key=map_IG.__getitem__,reverse=True)
 		file = open('IG_values.txt','w')
 		for k in valueIGSortedKey:
