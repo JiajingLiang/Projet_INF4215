@@ -18,6 +18,9 @@ class ClassifierSVM():
 		
 	# methode pour construire les donnees d'apprentissage
 	# ratio: rapport sur l'ensemble de donnee d'apprentissage
+	# il va retourne un map avec un cle 'keyWords' : une liste des mots cles
+	# un cle 'data': une matrice presente les valeurs TFIDF pour chaque tweets
+	# un cle 'target': une liste presente les classe de chaque tweet
 	def getDataApprentissage(self,ratio):
 		nbApprentissage = int(round(self.twitter.findNbTweets()*ratio));
 		tweets = self.twitter.getSeveralTweetsUntreated(nbApprentissage)
@@ -47,7 +50,6 @@ class ClassifierSVM():
 
 		allWordsFreqSortedKey = sorted(allWordsFreq,key=allWordsFreq.__getitem__,reverse=True)
 		
-		print 'nb de tweet analyse: ',len(matrixWords)
 		print 'longueur mot cle: ',len(allWordsFreqSortedKey)
 		
 		#calculer le poid TF-IDF
@@ -64,7 +66,8 @@ class ClassifierSVM():
 		
 		map_IG = self.informationGain(mapExistanceWords,classe)
 		
-		# on choisir les attributs(les mots) qui nous apporte plus information(avec les gains plus grands)
+		'''
+		# ecrire les valeur de gain dans un ficher pour debug
 		valueIGSortedKey = sorted(map_IG,key=map_IG.__getitem__,reverse=True)
 		file = open('IG_values.txt','w')
 		for k in valueIGSortedKey:
@@ -72,9 +75,13 @@ class ClassifierSVM():
 			file.write('\t\t')
 			file.write(repr(map_IG[k]))
 			file.write('\n')
-		file.close()
+		file.close()'''
+		
+		data_Matrix = self.rangeDataMatrix(map_TFIDF,map_IG,-0.03)
+		# on ajoute un cle 'target' pour dire chaque tweet est de quelle classe
+		data_Matrix['target'] = classe		
 
-		return
+		return data_Matrix
 	
 	# methode pour analyser une phrase 
 	# enlever les mots non alphabet
@@ -125,7 +132,7 @@ class ClassifierSVM():
 	
 	# methode pour calculer la valeurs information Gain pour chaque mot cle
 	def informationGain(self,mapExistanceWords,classe):
-		print '*************Information Gain******************'
+		#print '*************Information Gain******************'
 		probClasse0 = float(classe.count(0))/float(len(classe))+pow(10, -20)
 		probClasse1 = float(classe.count(1))/float(len(classe))+pow(10, -20)
 		probClasse2 = float(classe.count(2))/float(len(classe))+pow(10, -20)
@@ -156,29 +163,43 @@ class ClassifierSVM():
 			IG_value = entropyClass - entropyClassWithKeyWord - entropyClassWithoutKeyWord
 			map_IG[keyWord] = IG_value
 		return map_IG
-	
-	# construire le vecteur pour un tweet
-	def rangeDataVector(self,tweet):
-		return
-		
+			
 	# construire la matrice des donnees apprentissage
-	def	rangeDataMatrix(self,words):
-		return
+	# il va retourne un map avec un cle 'keyWords' : une liste des mots cles
+	# un cle 'data': une matrice presente les valeurs TFIDF pour chaque tweets
+	def	rangeDataMatrix(self,map_TFIDF,map_IG,threshold):
+		#print '*************rangeDataMatrix******************'
+		# supprimer les mots cles dont le gain est plus petit que un seuil
+		for (keyWord,IG_value) in map_IG.items():
+			if IG_value < threshold:
+				map_TFIDF.pop(keyWord)
+				
+		# ranger la matrice de data
+		nbTweets = len(map_TFIDF.itervalues().next())
+		tweets_Matrix = list()
+		keyWords = list()
+		for i in range(nbTweets):
+			tweet_TFIDF_values = list()
+			for (keyWord,TFIDF_value) in map_TFIDF.items():
+				tweet_TFIDF_values.append(TFIDF_value[i])
+				if i is 0:
+					keyWords.append(keyWord)
+			tweets_Matrix.append(tweet_TFIDF_values)
+		
+		data_Matrix = dict()
+		data_Matrix['keyWords'] = keyWords
+		data_Matrix['data'] = tweets_Matrix
+		
+		return data_Matrix
 	
 	# construire la model a partir les donnees d'apprentissage
 	def buildModel(self):
-		tweets = self.getDataApprentissage(0.02)
-		# for each tweet
-		# step1: analyseTweet
-		# step2: rangeDataVector
-		# step3: rangeDataMatrix
+		dataTweets = self.getDataApprentissage(0.02)
+		print 'nb mots cles choisit: ',len(dataTweets['keyWords'])
+		print 'nb de tweet analyse: ',len(dataTweets['target'])
 		
-		'''#######test#######
-		iris = datasets.load_iris()
-		self.data = iris.data[:, :2]
-		self.target = iris.target
-		
-		self.model = self.svm.fit(self.data,self.target)'''
+		#######apprentissage#######		
+		self.model = self.svm.fit(dataTweets['data'],dataTweets['target'])
 		
 		return
 		
