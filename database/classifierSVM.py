@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-from sklearn import svm,datasets
+from sklearn import svm,datasets,cross_validation
 
 from math import *
 import numpy as np
@@ -16,14 +16,12 @@ class ClassifierSVM():
 		self.target = []
 		self.model = None
 		
-	# methode pour construire les donnees d'apprentissage
-	# ratio: rapport sur l'ensemble de donnee d'apprentissage
+	# methode pour recuperer les donnees pour contruire le modele
 	# il va retourne un map avec un cle 'keyWords' : une liste des mots cles
 	# un cle 'data': une matrice presente les valeurs TFIDF pour chaque tweets
 	# un cle 'target': une liste presente les classe de chaque tweet
-	def getDataApprentissage(self,ratio):
-		nbApprentissage = int(round(self.twitter.findNbTweets()*ratio));
-		tweets = self.twitter.getSeveralTweetsUntreated(nbApprentissage)
+	def getDataForModelBuilding(self,nbTweets):		
+		tweets = self.twitter.getTweets(nbTweets)
 		
 		#liste les mots apparaissant dans les tweets avec leur frequence. ex : mot 'toto', 5
 		allWordsFreq = dict() 
@@ -62,11 +60,12 @@ class ClassifierSVM():
 				
 		# classe juste pour tester sans les donnees viens de base
 		# 0 pour positif, 1 pour negatif, 2 pour neutre
+		print 'nbTweets : ',nbTweets
 		classe = [0,1,1,2,2,2,1,1,1,1,2,2,1,2,1,0,0]
 		
 		map_IG = self.informationGain(mapExistanceWords,classe)
 		
-		'''
+		
 		# ecrire les valeur de gain dans un ficher pour debug
 		valueIGSortedKey = sorted(map_IG,key=map_IG.__getitem__,reverse=True)
 		file = open('IG_values.txt','w')
@@ -75,7 +74,7 @@ class ClassifierSVM():
 			file.write('\t\t')
 			file.write(repr(map_IG[k]))
 			file.write('\n')
-		file.close()'''
+		file.close()
 		
 		data_Matrix = self.rangeDataMatrix(map_TFIDF,map_IG,-0.03)
 		# on ajoute un cle 'target' pour dire chaque tweet est de quelle classe
@@ -91,10 +90,12 @@ class ClassifierSVM():
 		regex = re.compile(r'(\w)+')
 		wordsReturn = list()
 		for w in words:
+			w = w.lower()
 			if w[0] is not '@' and w[0] is not'#':
 				if w.find('/') is -1 and regex.match(w) is not None:
-					ww = w.replace('.','').replace(',','').replace('!','').replace('?','').replace('"','')
-					wordsReturn.append(ww)	
+					w = w.replace('.','').replace(',','').replace('!','').replace('?','').replace('"','')
+					if w not in ['le','la','les','l','de','des','d','que','qui','ou','dont']:
+						wordsReturn.append(w)	
 		return wordsReturn
 
 	# calculer les valeurs TF-IDF pour chaque mot par rappot un tweet
@@ -194,12 +195,16 @@ class ClassifierSVM():
 	
 	# construire la model a partir les donnees d'apprentissage
 	def buildModel(self):
-		dataTweets = self.getDataApprentissage(0.02)
+		dataTweets = self.getDataForModelBuilding(17)
 		print 'nb mots cles choisit: ',len(dataTweets['keyWords'])
 		print 'nb de tweet analyse: ',len(dataTweets['target'])
 		
-		#######apprentissage#######		
-		self.model = self.svm.fit(dataTweets['data'],dataTweets['target'])
+		#######apprentissage et test -- cross validation #######		
+		#self.model = self.svm.fit(dataTweets['data'],dataTweets['target'])
+		data_train,data_test,target_train,target_test = cross_validation.train_test_split(dataTweets['data'], dataTweets['target'], test_size=0.4, random_state=0)
+		self.model = svm.SVC(kernel='linear', C=1).fit(data_train,target_train)
+		print 'score : ',self.model.score(data_test,target_test)
+		
 		
 		return
 		

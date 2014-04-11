@@ -33,6 +33,15 @@ class Twitter:
 		for row in rows:
 			tweets.append(self.__generateTweet(row))
 		return tweets
+		
+	def getTweets(self,nbTweets):
+		query = "SELECT * FROM Tweets WHERE AccountFK = %s LIMIT %s"
+		params = (self.accountID,nbTweets)
+		rows = self.db.executeQueryWithMultipleResults(query,params)
+		tweets = list()
+		for row in rows:
+			tweets.append(self.__generateTweet(row))
+		return tweets
 
 	# Recherche des commentaires associés à un tweet
 	def findCommentByTweetID(self, tweetID):
