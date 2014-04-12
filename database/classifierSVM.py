@@ -22,7 +22,7 @@ class ClassifierSVM():
 	# methode pour recuperer les donnees pour contruire le modele
 	# il va retourne un map avec un cle 'keyWords' : une liste des mots cles
 	# un cle 'data': une matrice presente les valeurs TFIDF pour chaque tweets
-	# un cle 'target': une liste presente les classe de chaque tweet
+	# un cle 'classes': une liste presente les classe de chaque tweet
 	def getDataForModelBuilding(self,nbTweets):		
 		tweets = self.twitter.getTweets(nbTweets)
 		
@@ -76,8 +76,9 @@ class ClassifierSVM():
 		file.close()'''
 		
 		data_Matrix = self.rangeDataMatrix(map_TFIDF,map_IG,-0.03)
-		# on ajoute un cle 'target' pour dire chaque tweet est de quelle classe
-		data_Matrix['target'] = classe		
+		# on ajoute un cle 'classes' pour dire chaque tweet est de quelle classe
+		data_Matrix['classes'] = classe
+		data_Matrix['existanceWords'] = mapExistanceWords
 
 		return data_Matrix
 	
@@ -202,15 +203,15 @@ class ClassifierSVM():
 		dataTweets = self.getDataForModelBuilding(20)
 		
 		print 'nb mots cles choisit: ',len(dataTweets['keyWords'])
-		print 'nb de tweet analyse: ',len(dataTweets['target'])
+		print 'nb de tweet analyse: ',len(dataTweets['classes'])
 		
 		#######apprentissage et test -- cross validation #######		
-		#self.model = self.svm.fit(dataTweets['data'],dataTweets['target'])
+		#self.model = self.svm.fit(dataTweets['data'],dataTweets['classes'])
 		
 		
 		
 
-		data_train,data_test,target_train,target_test = cross_validation.train_test_split(dataTweets['data'], dataTweets['target'], test_size=0.4, random_state=0)
+		data_train,data_test,target_train,target_test = cross_validation.train_test_split(dataTweets['data'], dataTweets['classes'], test_size=0.4, random_state=0)
 		self.model = self.svm.fit(data_train,target_train)
 		
 		#------- TEST load -------
@@ -224,21 +225,25 @@ class ClassifierSVM():
 		
 		return
 		
-	# predire l'emotion transmit d'un tweet
-	def	predictEmotion(self,tweet):
+	# predire l'emotion transmit des tweets
+	def	predictEmotion(self,tweetsToPredict):
 		self.model = joblib.load("tweetsModel.pkl")
 		dataFile = open("dataTweets.pkl","rb")
 		data = pickle.load(dataFile)
 		dataFile.close
-		#######test#######
-		h = .02
-	
-		x_min, x_max = self.data[:, 0].min() - .5, self.data[:, 0].max() + .5
-		y_min, y_max = self.data[:, 1].min() - .5, self.data[:, 1].max() + .5
-		xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
-		Z = self.model.predict(np.c_[xx.ravel(), yy.ravel()])
-
 		
-		return
+		mapExistanceWords = data['existanceWords']
+		keyWords = data['keyWords']
+		allTFIDFs = list()
+		for tweet in tweetsToPredict:
+			listWords = self.analysePhrase(tweet)
+			TFIDF = list()
+			for keyWord in keyWords:
+				TF = float(listWords.count(keyWord))/len(listWords)
+				IDF = log(float(len(mapExistanceWords[keyWord]))/mapExistanceWords[keyWord].count(True))
+				TFIDF.append(TF*IDF)
+			allTFIDFs.append(TFIDF)
+		
+		return self.model.predict(allTFIDFs)
 	
 	
