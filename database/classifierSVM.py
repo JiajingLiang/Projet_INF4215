@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from sklearn import svm,datasets,cross_validation
+from sklearn.externals import joblib
 
 from math import *
 import numpy as np
@@ -67,14 +68,14 @@ class ClassifierSVM():
 		
 		
 		# ecrire les valeur de gain dans un ficher pour debug
-		valueIGSortedKey = sorted(map_IG,key=map_IG.__getitem__,reverse=True)
+		'''valueIGSortedKey = sorted(map_IG,key=map_IG.__getitem__,reverse=True)
 		file = open('IG_values.txt','w')
 		for k in valueIGSortedKey:
 			file.write(k)
 			file.write('\t\t')
 			file.write(repr(map_IG[k]))
 			file.write('\n')
-		file.close()
+		file.close()'''
 		
 		data_Matrix = self.rangeDataMatrix(map_TFIDF,map_IG,-0.03)
 		# on ajoute un cle 'target' pour dire chaque tweet est de quelle classe
@@ -89,14 +90,11 @@ class ClassifierSVM():
 		phrase = re.sub("((http:\/\/|https:\/\/)?(www.)?(([a-zA-Z0-9-]){2,}\.){1,4}([a-zA-Z]){2,6}(\/([a-zA-Z-_\/\.0-9#:?=&;,]*)?)?)",'',phrase)
 		phrase = re.sub("(,|!|\.|;|:|\?|\(|\)|\/|\\\\|\[|\]|{|}|\")",'',phrase)
 		words = phrase.split()
-		#regex = re.compile(r'(\w)+')
 
 		wordsReturn = list()
 		for w in words:
 			w = w.lower()
 			if w[0] is '@' or w[0] is '#': continue
-			#if w.find('/') is -1 and regex.match(w) is not None:
-					#w = w.replace('.','').replace(',','').replace('!','').replace('?','').replace('"','')
 			if w not in ['le','la','les',"l'",'de','des',"d'",'que','qui','mais','ou','et','donc','or','ni','car','dont','ne','pas']:
 				wordsReturn.append(w.decode('latin-1'))	
 		return wordsReturn
@@ -117,7 +115,7 @@ class ClassifierSVM():
 					nbTweetOccurrence = nbTweetOccurrence + 1.0
 				TFs.append(tweet.count(key)/float(len(tweet))) # on stocke la division entre le nombre de fois d'un mot apparait dans le tweet analyse et nombre de mot dans de tweet
 			TFs = [x*log(float(len(matrixTweetWords))/nbTweetOccurrence) for x in TFs] # len(matrixTweetWords): nombre de tweet analyse, nbTweetOccurrence: nombre de tweet qu'il existe le mot
-			mapKeyWords_TFIDF[key] = TFs
+			mapKeyWords_TFIDF[key] = TFs #on map pour chaque mot la pertinence obtenu pour chaque tweet
 		return mapKeyWords_TFIDF
 		
 	# cette methode retourne un map avec les mots comme cle
@@ -156,7 +154,6 @@ class ClassifierSVM():
 			probClasse0WithKeyWord = float(classesWithKeyWord.count(0))/float(len(classesWithKeyWord))+pow(10, -20)
 			probClasse1WithKeyWord = float(classesWithKeyWord.count(1))/float(len(classesWithKeyWord))+pow(10, -20)
 			probClasse2WithKeyWord = float(classesWithKeyWord.count(2))/float(len(classesWithKeyWord))+pow(10, -20)
-			entropyClassWithKeyWord = -(probClasse0WithKeyWord*log(probClasse0WithKeyWord,2))
 			entropyClassWithKeyWord = -(probClasse0WithKeyWord*log(probClasse0WithKeyWord,2)+probClasse1WithKeyWord*log(probClasse1WithKeyWord,2)+probClasse2WithKeyWord*log(probClasse2WithKeyWord,2))
 			
 			probClasse0WithoutKeyWord = float(classesWithoutKeyWord.count(0))/float(len(classesWithoutKeyWord))+pow(10, -20)
@@ -182,17 +179,17 @@ class ClassifierSVM():
 		nbTweets = len(map_TFIDF.itervalues().next())
 		tweets_Matrix = list()
 		keyWords = list()
-		for i in range(nbTweets):
+		for i in range(nbTweets):#Pour chaque tweet ...
 			tweet_TFIDF_values = list()
-			for (keyWord,TFIDF_value) in map_TFIDF.items():
-				tweet_TFIDF_values.append(TFIDF_value[i])
+			for (keyWord,TFIDF_value) in map_TFIDF.items():# ... pour chaque mot ...
+				tweet_TFIDF_values.append(TFIDF_value[i])# ... on recupère la pertinence du mot pour le tweet i ...
 				if i is 0:
-					keyWords.append(keyWord)
-			tweets_Matrix.append(tweet_TFIDF_values)
+					keyWords.append(keyWord)# ... on ajoute le mot dans la list keyWords ...
+			tweets_Matrix.append(tweet_TFIDF_values)# ... et on ajoute la liste de pertinence des mots de keyWords pour chaque tweet
 		
 		data_Matrix = dict()
-		data_Matrix['keyWords'] = keyWords
-		data_Matrix['data'] = tweets_Matrix
+		data_Matrix['keyWords'] = keyWords# Liste de mots
+		data_Matrix['data'] = tweets_Matrix#Liste de tweet ou chaque tweet correspond à la liste de pertinence des mots definis par keyWords
 		
 		return data_Matrix
 	
@@ -205,9 +202,12 @@ class ClassifierSVM():
 		#######apprentissage et test -- cross validation #######		
 		#self.model = self.svm.fit(dataTweets['data'],dataTweets['target'])
 		data_train,data_test,target_train,target_test = cross_validation.train_test_split(dataTweets['data'], dataTweets['target'], test_size=0.4, random_state=0)
-		self.model = svm.SVC(kernel='linear', C=1).fit(data_train,target_train)
-		print 'score : ',self.model.score(data_test,target_test)
+		self.svm.fit(data_train,target_train)
 		
+		#------- TEST load -------
+		joblib.dump(self.svm,"tweetsModel.pkl")
+		self.model = joblib.load("tweetsModel.pkl")
+		print 'score : ',self.model.score(data_test,target_test)
 		
 		return
 		
