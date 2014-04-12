@@ -7,6 +7,9 @@ from sklearn.externals import joblib
 from math import *
 import numpy as np
 import re
+from nltk import stem
+
+pattern = "erais$|erait$|erions$|eriez$|eraient$|irais$|irait$|irions$|iriez$|iraient$|oir$|aitre$|ssons$|ssez$|ssent$|cs$|c$|quons$|quez$|quent$|ais$|ait$|ions$|iez$|aient$|e$|es$|ons$|ez$|ent$|s$|t$|ai$|as$|a$|erent$|irent$|us$|ut$|erai$|eras$|era$|erons$|erez$|eront$|irai$|iras$|ira$|irons$|irez$|iront$|rai$|ras$|ra$|rons$|rez$|ront$|er$|ir$|ant$|ée$|ées$|ie$|is$|ies$|u$|ue$|us$|ues$|i$|ses$|se$|te$|ts$|tes$|é$|"
 
 class ClassifierSVM():
 	def __init__(self,kernelFuncName,g,c,twitter):
@@ -54,16 +57,16 @@ class ClassifierSVM():
 		#calculer le poid TF-IDF
 		map_TFIDF = self.TF_IDF(allWordsFreqSortedKey,matrixWords)
 		
+		# Map ou key = mot et value = liste qui détermine si le mot est présent dans chaque tweet... ou pas (True,False) 
 		mapExistanceWords = self.calculateExistanceWords(allWordsFreqSortedKey,matrixWords)
-		
-		# calculer le information gain pour chaque mot cle
-		# afin de choisir celui qui apporte plus d'information
 				
 		# classe juste pour tester sans les donnees viens de base
 		# 0 pour positif, 1 pour negatif, 2 pour neutre
 		print 'nbTweets : ',nbTweets
 		classe = [0,1,1,2,2,2,1,1,1,1,2,2,1,2,1,0,0]
 		
+		# calculer le information gain pour chaque mot cle
+		# afin de choisir celui qui apporte plus d'information
 		map_IG = self.informationGain(mapExistanceWords,classe)
 		
 		
@@ -90,13 +93,16 @@ class ClassifierSVM():
 		phrase = re.sub("((http:\/\/|https:\/\/)?(www.)?(([a-zA-Z0-9-]){2,}\.){1,4}([a-zA-Z]){2,6}(\/([a-zA-Z-_\/\.0-9#:?=&;,]*)?)?)",'',phrase)
 		phrase = re.sub("(,|!|\.|;|:|\?|\(|\)|\/|\\\\|\[|\]|{|}|\")",'',phrase)
 		words = phrase.split()
-
+		stemmer = stem.RegexpStemmer(pattern)
 		wordsReturn = list()
 		for w in words:
 			w = w.lower()
 			if w[0] is '@' or w[0] is '#': continue
-			if w not in ['le','la','les',"l'",'de','des',"d'",'que','qui','mais','ou','et','donc','or','ni','car','dont','ne','pas']:
-				wordsReturn.append(w.decode('latin-1'))	
+			if w not in ['le','la','les',"l'",'de','des',"d'",'que','qui','ou','et','dont','je','tu','il','nous','vous','ils']:
+				w = w.decode('latin-1').encode('utf-8')
+				print w
+				w = stemmer.stem(w)
+				wordsReturn.append(w)	
 		return wordsReturn
 
 	# calculer les valeurs TF-IDF pour chaque mot par rappot un tweet
@@ -105,17 +111,17 @@ class ClassifierSVM():
 	# @matrixTweetWords une liste de tweets avec chaque element(tweet) est une liste de mot dans ce tweet
 	def TF_IDF(self,keyWords,matrixTweetWords):
 		#print '*************TF-IDF******************'
-		# un map avec mot comme cle et une liste des valeurs TF-IDF
+		# Map avec key = mot, value = une liste de valeurs TF-IDF
 		mapKeyWords_TFIDF = dict()
-		for key in keyWords:
+		for key in keyWords:# Pour chaque mot...
 			TFs = list()
 			nbTweetOccurrence = 0.0
-			for tweet in matrixTweetWords:
-				if key in tweet:
+			for tweet in matrixTweetWords:# ...On parcourt les tweets...
+				if key in tweet:# ...Si le mot étudié est dans le tweet étudié...
 					nbTweetOccurrence = nbTweetOccurrence + 1.0
-				TFs.append(tweet.count(key)/float(len(tweet))) # on stocke la division entre le nombre de fois d'un mot apparait dans le tweet analyse et nombre de mot dans de tweet
-			TFs = [x*log(float(len(matrixTweetWords))/nbTweetOccurrence) for x in TFs] # len(matrixTweetWords): nombre de tweet analyse, nbTweetOccurrence: nombre de tweet qu'il existe le mot
-			mapKeyWords_TFIDF[key] = TFs #on map pour chaque mot la pertinence obtenu pour chaque tweet
+				TFs.append(tweet.count(key)/float(len(tweet))) # On calcule la fréquence du mot dans le tweet analysé
+			TFIDF = [x*log(float(len(matrixTweetWords))/nbTweetOccurrence) for x in TFs] # On calcule l'importance du mot dans l'ensemble des tweets (idf) et on le multiplie avec le TF afin d'obtenir le poids du mot dans chaque tweet
+			mapKeyWords_TFIDF[key] = TFIDF #on map pour chaque mot la pertinence obtenue pour chaque tweet
 		return mapKeyWords_TFIDF
 		
 	# cette methode retourne un map avec les mots comme cle
@@ -138,18 +144,22 @@ class ClassifierSVM():
 		probClasse0 = float(classe.count(0))/float(len(classe))+pow(10, -20)
 		probClasse1 = float(classe.count(1))/float(len(classe))+pow(10, -20)
 		probClasse2 = float(classe.count(2))/float(len(classe))+pow(10, -20)
+		# Calcul de l'entropie des classes (POSITIVE,NEGATIVE,NEUTRAL)
 		entropyClass = -(probClasse0*log(probClasse0,2)+probClasse1*log(probClasse1,2)+probClasse2*log(probClasse2,2))
 		map_IG = dict()
-		for (keyWord,existances) in mapExistanceWords.items():
+		for (keyWord,existances) in mapExistanceWords.items():# Pour chaque mot
 			classesWithKeyWord = list()
 			classesWithoutKeyWord = list()
 			counter = 0
 			for e in existances:
-				if e is False:
+				if e is False:# Si le mot n'apparait pas dans le tweet
 					classesWithoutKeyWord.append(classe[counter])
 				else:
 					classesWithKeyWord.append(classe[counter])
 				counter = counter + 1
+
+			probakeyWordExiste = len(classesWithKeyWord)/(len(classesWithKeyWord)+len(classesWithoutKeyWord))
+			probakeyWordNonExiste = len(classesWithoutKeyWord)/(len(classesWithKeyWord)+len(classesWithoutKeyWord))
 			
 			probClasse0WithKeyWord = float(classesWithKeyWord.count(0))/float(len(classesWithKeyWord))+pow(10, -20)
 			probClasse1WithKeyWord = float(classesWithKeyWord.count(1))/float(len(classesWithKeyWord))+pow(10, -20)
@@ -161,16 +171,16 @@ class ClassifierSVM():
 			probClasse2WithoutKeyWord = float(classesWithoutKeyWord.count(2))/float(len(classesWithoutKeyWord))+pow(10, -20)
 			entropyClassWithoutKeyWord = -(probClasse0WithoutKeyWord*log(probClasse0WithoutKeyWord,2)+probClasse1WithoutKeyWord*log(probClasse1WithoutKeyWord,2)+probClasse2WithoutKeyWord*log(probClasse2WithoutKeyWord,2))
 			
-			IG_value = entropyClass - entropyClassWithKeyWord - entropyClassWithoutKeyWord
+			IG_value = entropyClass - probakeyWordExiste*entropyClassWithKeyWord - probakeyWordNonExiste*entropyClassWithoutKeyWord
 			map_IG[keyWord] = IG_value
 		return map_IG
 			
-	# construire la matrice des donnees apprentissage
-	# il va retourne un map avec un cle 'keyWords' : une liste des mots cles
-	# un cle 'data': une matrice presente les valeurs TFIDF pour chaque tweets
+	# construire la matrice des données apprentissage
+	# il va retourne un map avec une clé 'keyWords' : une liste des mots clés
+	# une clé 'data': une matrice présente les valeurs TFIDF pour chaque tweets
 	def	rangeDataMatrix(self,map_TFIDF,map_IG,threshold):
 		#print '*************rangeDataMatrix******************'
-		# supprimer les mots cles dont le gain est plus petit que un seuil
+		# supprimer les mots cles dont le gain est plus petit qu'un seuil
 		for (keyWord,IG_value) in map_IG.items():
 			if IG_value < threshold:
 				map_TFIDF.pop(keyWord)
@@ -189,7 +199,7 @@ class ClassifierSVM():
 		
 		data_Matrix = dict()
 		data_Matrix['keyWords'] = keyWords# Liste de mots
-		data_Matrix['data'] = tweets_Matrix#Liste de tweet ou chaque tweet correspond à la liste de pertinence des mots definis par keyWords
+		data_Matrix['data'] = tweets_Matrix#Liste de tweets ou chaque tweet correspond à la liste de pertinence des mots definis par keyWords
 		
 		return data_Matrix
 	
@@ -213,6 +223,7 @@ class ClassifierSVM():
 		
 	# predire l'emotion transmit d'un tweet
 	def	predictEmotion(self,tweet):
+		self.model = joblib.load("tweetsModel.pkl")
 		#######test#######
 		h = .02
 	
