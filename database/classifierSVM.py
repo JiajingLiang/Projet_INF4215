@@ -31,10 +31,17 @@ class ClassifierSVM():
 		
 		#liste de tableau de mots: un tableau de mots represente un tweet + commentaires
 		matrixWords = list() 
-		
+		classe = list()
 		for tweet in tweets:
+			if tweet.meaning is 'POSITIVE':
+				classe.append(0)
+			elif tweet.meaning is 'NEGATIVE':
+				classe.append(1)
+			else:
+				classe.append(2)
 			str = ""
 			str = str + tweet.contentRaw + " "
+			
 			comments = self.twitter.findCommentByTweetID(tweet.tweetID)
 			for comment in comments:
 				str = str + comment.contentRaw + " "
@@ -58,15 +65,15 @@ class ClassifierSVM():
 				
 		# classe juste pour tester sans les donnees viens de base
 		# 0 pour positif, 1 pour negatif, 2 pour neutre
+		print classe
 		classe = [0,1,1,2,2,2,1,1,1,1,2,2,1,2,1,0,0,1,0,1]
 		
 		# calculer le information gain pour chaque mot cle
 		# afin de choisir celui qui apporte plus d'information
 		map_IG = self.informationGain(mapExistanceWords,classe)
-		
-		
-		# ecrire les valeur de gain dans un ficher pour debug
-		'''valueIGSortedKey = sorted(map_IG,key=map_IG.__getitem__,reverse=True)
+			
+		'''# ecrire les valeur de gain dans un ficher pour debug
+		valueIGSortedKey = sorted(map_IG,key=map_IG.__getitem__,reverse=True)
 		file = open('IG_values.txt','w')
 		for k in valueIGSortedKey:
 			file.write(k)
@@ -201,16 +208,12 @@ class ClassifierSVM():
 	# construire la model a partir les donnees d'apprentissage
 	def buildModel(self):
 		dataTweets = self.getDataForModelBuilding(20)
-		
 		print 'nb mots cles choisit: ',len(dataTweets['keyWords'])
 		print 'nb de tweet analyse: ',len(dataTweets['classes'])
 		
 		#######apprentissage et test -- cross validation #######		
 		#self.model = self.svm.fit(dataTweets['data'],dataTweets['classes'])
 		
-		
-		
-
 		data_train,data_test,target_train,target_test = cross_validation.train_test_split(dataTweets['data'], dataTweets['classes'], test_size=0.4, random_state=0)
 		self.model = self.svm.fit(data_train,target_train)
 		
@@ -218,25 +221,23 @@ class ClassifierSVM():
 		joblib.dump(self.model,"tweetsModel.pkl")
 		self.model = joblib.load("tweetsModel.pkl")
 		print 'score : ',self.model.score(data_test,target_test)
-		
-		dataFile = open("dataTweets.pkl","wb")
-		pickle.dump(dataTweets,dataFile)
-		dataFile.close()
-		
+
+		joblib.dump(dataTweets,"dataTweets.pkl")
 		return
 		
 	# predire l'emotion transmit des tweets
 	def	predictEmotion(self,tweetsToPredict):
 		self.model = joblib.load("tweetsModel.pkl")
-		dataFile = open("dataTweets.pkl","rb")
-		data = pickle.load(dataFile)
-		dataFile.close
+		data = joblib.load("dataTweets.pkl")
 		
 		mapExistanceWords = data['existanceWords']
 		keyWords = data['keyWords']
 		allTFIDFs = list()
+		# pour chaque tweet a predire
 		for tweet in tweetsToPredict:
+			#analyser la phrase
 			listWords = self.analysePhrase(tweet)
+			# calculer les valeurs TFIDF
 			TFIDF = list()
 			for keyWord in keyWords:
 				TF = float(listWords.count(keyWord))/len(listWords)

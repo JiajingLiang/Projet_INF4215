@@ -77,7 +77,7 @@ class Twitter:
 		self.db.executeQueryModifyingDatabase(query,params)
 
 	def __generateTweet(self,row):
-		return Tweet(row[0],row[1],row[2],row[3],row[4],row[5])
+		return Tweet(row[0],row[1],row[2],row[3],row[4],row[5],row[6])
 
 	def __generateComment(self,row):
 		return Comment(row[0],row[1],row[2],row[3],row[4])
