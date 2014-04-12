@@ -86,16 +86,19 @@ class ClassifierSVM():
 	# enlever les mots non alphabet
 	def analysePhrase(self,phrase):
 		#print '*************Analyser Phrase******************'
+		phrase = re.sub("((http:\/\/|https:\/\/)?(www.)?(([a-zA-Z0-9-]){2,}\.){1,4}([a-zA-Z]){2,6}(\/([a-zA-Z-_\/\.0-9#:?=&;,]*)?)?)",'',phrase)
+		phrase = re.sub("(,|!|\.|;|:|\?|\(|\)|\/|\\\\|\[|\]|{|}|\")",'',phrase)
 		words = phrase.split()
-		regex = re.compile(r'(\w)+')
+		#regex = re.compile(r'(\w)+')
+
 		wordsReturn = list()
 		for w in words:
 			w = w.lower()
-			if w[0] is not '@' and w[0] is not'#':
-				if w.find('/') is -1 and regex.match(w) is not None:
-					w = w.replace('.','').replace(',','').replace('!','').replace('?','').replace('"','')
-					if w not in ['le','la','les','l','de','des','d','que','qui','ou','dont']:
-						wordsReturn.append(w)	
+			if w[0] is '@' or w[0] is '#': continue
+			#if w.find('/') is -1 and regex.match(w) is not None:
+					#w = w.replace('.','').replace(',','').replace('!','').replace('?','').replace('"','')
+			if w not in ['le','la','les',"l'",'de','des',"d'",'que','qui','mais','ou','et','donc','or','ni','car','dont','ne','pas']:
+				wordsReturn.append(w.decode('latin-1'))	
 		return wordsReturn
 
 	# calculer les valeurs TF-IDF pour chaque mot par rappot un tweet
