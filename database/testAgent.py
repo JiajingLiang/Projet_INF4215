@@ -7,5 +7,5 @@ from twitter import *
 
 db = DataStorage('localhost','root','','twitter')
 twitter = Twitter(db,24744541)
-classifier = ClassifierSVM('rbf',0.5,1,twitter)
+classifier = ClassifierSVM('rbf',0.2,5,twitter)
 classifier.buildModel()

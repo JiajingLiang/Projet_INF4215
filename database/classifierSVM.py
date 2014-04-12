@@ -7,6 +7,7 @@ from sklearn.externals import joblib
 from math import *
 import numpy as np
 import re
+import pickle
 from nltk import stem
 
 pattern = "erais$|erait$|erions$|eriez$|eraient$|irais$|irait$|irions$|iriez$|iraient$|oir$|aitre$|ssons$|ssez$|ssent$|cs$|c$|quons$|quez$|quent$|ais$|ait$|ions$|iez$|aient$|e$|es$|ons$|ez$|ent$|s$|t$|ai$|as$|a$|erent$|irent$|us$|ut$|erai$|eras$|era$|erons$|erez$|eront$|irai$|iras$|ira$|irons$|irez$|iront$|rai$|ras$|ra$|rons$|rez$|ront$|er$|ir$|ant$|ée$|ées$|ie$|is$|ies$|u$|ue$|us$|ues$|i$|ses$|se$|te$|ts$|tes$|é$|"
@@ -16,8 +17,6 @@ class ClassifierSVM():
 		self.svm = svm.SVC(kernel = kernelFuncName,gamma=g,C=c)
 		# twitter: DB Connnector
 		self.twitter = twitter
-		self.data = []
-		self.target = []
 		self.model = None
 		
 	# methode pour recuperer les donnees pour contruire le modele
@@ -39,9 +38,8 @@ class ClassifierSVM():
 			comments = self.twitter.findCommentByTweetID(tweet.tweetID)
 			for comment in comments:
 				str = str + comment.contentRaw + " "
-			# analyser le tweet et les commentaires
-			# TODO: les bugs a corriger
 				
+			# analyser le tweet et les commentaires				
 			listWords = self.analysePhrase(str) # liste des mots du tweet analyse
 			matrixWords.append(listWords)
 			for w in listWords:
@@ -51,9 +49,7 @@ class ClassifierSVM():
 					allWordsFreq[w] = 1
 
 		allWordsFreqSortedKey = sorted(allWordsFreq,key=allWordsFreq.__getitem__,reverse=True)
-		
-		print 'longueur mot cle: ',len(allWordsFreqSortedKey)
-		
+				
 		#calculer le poid TF-IDF
 		map_TFIDF = self.TF_IDF(allWordsFreqSortedKey,matrixWords)
 		
@@ -62,8 +58,7 @@ class ClassifierSVM():
 				
 		# classe juste pour tester sans les donnees viens de base
 		# 0 pour positif, 1 pour negatif, 2 pour neutre
-		print 'nbTweets : ',nbTweets
-		classe = [0,1,1,2,2,2,1,1,1,1,2,2,1,2,1,0,0]
+		classe = [0,1,1,2,2,2,1,1,1,1,2,2,1,2,1,0,0,1,0,1]
 		
 		# calculer le information gain pour chaque mot cle
 		# afin de choisir celui qui apporte plus d'information
@@ -100,7 +95,6 @@ class ClassifierSVM():
 			if w[0] is '@' or w[0] is '#': continue
 			if w not in ['le','la','les',"l'",'de','des',"d'",'que','qui','ou','et','dont','je','tu','il','nous','vous','ils']:
 				w = w.decode('latin-1').encode('utf-8')
-				print w
 				w = stemmer.stem(w)
 				wordsReturn.append(w)	
 		return wordsReturn
@@ -205,25 +199,37 @@ class ClassifierSVM():
 	
 	# construire la model a partir les donnees d'apprentissage
 	def buildModel(self):
-		dataTweets = self.getDataForModelBuilding(17)
+		dataTweets = self.getDataForModelBuilding(20)
+		
 		print 'nb mots cles choisit: ',len(dataTweets['keyWords'])
 		print 'nb de tweet analyse: ',len(dataTweets['target'])
 		
 		#######apprentissage et test -- cross validation #######		
 		#self.model = self.svm.fit(dataTweets['data'],dataTweets['target'])
+		
+		
+		
+
 		data_train,data_test,target_train,target_test = cross_validation.train_test_split(dataTweets['data'], dataTweets['target'], test_size=0.4, random_state=0)
-		self.svm.fit(data_train,target_train)
+		self.model = self.svm.fit(data_train,target_train)
 		
 		#------- TEST load -------
-		joblib.dump(self.svm,"tweetsModel.pkl")
+		joblib.dump(self.model,"tweetsModel.pkl")
 		self.model = joblib.load("tweetsModel.pkl")
 		print 'score : ',self.model.score(data_test,target_test)
+		
+		dataFile = open("dataTweets.pkl","wb")
+		pickle.dump(dataTweets,dataFile)
+		dataFile.close()
 		
 		return
 		
 	# predire l'emotion transmit d'un tweet
 	def	predictEmotion(self,tweet):
 		self.model = joblib.load("tweetsModel.pkl")
+		dataFile = open("dataTweets.pkl","rb")
+		data = pickle.load(dataFile)
+		dataFile.close
 		#######test#######
 		h = .02
 	
