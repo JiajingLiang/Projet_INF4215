@@ -33,9 +33,9 @@ class ClassifierSVM():
 		matrixWords = list() 
 		classe = list()
 		for tweet in tweets:
-			if tweet.meaning is 'POSITIVE':
+			if tweet.meaning == 'POSITIVE':
 				classe.append(0)
-			elif tweet.meaning is 'NEGATIVE':
+			elif tweet.meaning == 'NEGATIVE':
 				classe.append(1)
 			else:
 				classe.append(2)
