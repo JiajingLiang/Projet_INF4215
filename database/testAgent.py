@@ -5,7 +5,7 @@ from classifierSVM import *
 from data_storage import *
 from twitter import *
 
-db = DataStorage('localhost','root','','twitter')
+db = DataStorage('localhost','root','','tweetdb')
 twitter = Twitter(db,24744541)
 classifier = ClassifierSVM('rbf',0.2,5,twitter)
 classifier.buildModel()

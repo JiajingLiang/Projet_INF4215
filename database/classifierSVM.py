@@ -24,7 +24,7 @@ class ClassifierSVM():
 	# un cle 'data': une matrice presente les valeurs TFIDF pour chaque tweets
 	# un cle 'classes': une liste presente les classe de chaque tweet
 	def getDataForModelBuilding(self,nbTweets):		
-		tweets = self.twitter.getTweets(nbTweets)
+		tweets = self.twitter.getTweetsTreated()
 		
 		#liste les mots apparaissant dans les tweets avec leur frequence. ex : mot 'toto', 5
 		allWordsFreq = dict() 
@@ -63,10 +63,10 @@ class ClassifierSVM():
 		# Map ou key = mot et value = liste qui détermine si le mot est présent dans chaque tweet... ou pas (True,False) 
 		mapExistanceWords = self.calculateExistanceWords(allWordsFreqSortedKey,matrixWords)
 				
-		# classe juste pour tester sans les donnees viens de base
+		'''# classe juste pour tester sans les donnees viens de base
 		# 0 pour positif, 1 pour negatif, 2 pour neutre
 		print classe
-		classe = [0,1,1,2,2,2,1,1,1,1,2,2,1,2,1,0,0,1,0,1]
+		classe = [0,1,1,2,2,2,1,1,1,1,2,2,1,2,1,0,0,1,0,1]'''
 		
 		# calculer le information gain pour chaque mot cle
 		# afin de choisir celui qui apporte plus d'information
@@ -82,7 +82,7 @@ class ClassifierSVM():
 			file.write('\n')
 		file.close()'''
 		
-		data_Matrix = self.rangeDataMatrix(map_TFIDF,map_IG,-0.03)
+		data_Matrix = self.rangeDataMatrix(map_TFIDF,map_IG,0.01)
 		# on ajoute un cle 'classes' pour dire chaque tweet est de quelle classe
 		data_Matrix['classes'] = classe
 		data_Matrix['existanceWords'] = mapExistanceWords
@@ -160,8 +160,8 @@ class ClassifierSVM():
 					classesWithKeyWord.append(classe[counter])
 				counter = counter + 1
 
-			probakeyWordExiste = len(classesWithKeyWord)/(len(classesWithKeyWord)+len(classesWithoutKeyWord))
-			probakeyWordNonExiste = len(classesWithoutKeyWord)/(len(classesWithKeyWord)+len(classesWithoutKeyWord))
+			probakeyWordExiste = float(len(classesWithKeyWord))/(len(classesWithKeyWord)+len(classesWithoutKeyWord))
+			probakeyWordNonExiste = float(len(classesWithoutKeyWord))/(len(classesWithKeyWord)+len(classesWithoutKeyWord))
 			
 			probClasse0WithKeyWord = float(classesWithKeyWord.count(0))/float(len(classesWithKeyWord))+pow(10, -20)
 			probClasse1WithKeyWord = float(classesWithKeyWord.count(1))/float(len(classesWithKeyWord))+pow(10, -20)
@@ -214,7 +214,7 @@ class ClassifierSVM():
 		#######apprentissage et test -- cross validation #######		
 		#self.model = self.svm.fit(dataTweets['data'],dataTweets['classes'])
 		
-		data_train,data_test,target_train,target_test = cross_validation.train_test_split(dataTweets['data'], dataTweets['classes'], test_size=0.4, random_state=0)
+		data_train,data_test,target_train,target_test = cross_validation.train_test_split(dataTweets['data'], dataTweets['classes'], test_size=0.5, random_state=0)
 		self.model = self.svm.fit(data_train,target_train)
 		
 		#------- TEST load -------

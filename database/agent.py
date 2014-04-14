@@ -7,7 +7,7 @@ from twitter import *
 import csv
 import sys
 
-db = DataStorage('localhost','root','','twitter')
+db = DataStorage('localhost','root','','tweetdb')
 twitter = Twitter(db,24744541)
 classifier = ClassifierSVM('rbf',0.01,5,twitter)
 
