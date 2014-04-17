@@ -9,7 +9,7 @@ import sys
 
 db = DataStorage('localhost','root','','tweetdb')
 twitter = Twitter(db,24744541)
-classifier = ClassifierSVM('rbf',0.01,5,twitter)
+classifier = ClassifierSVM('rbf',0.2,100,twitter)
 
 if len(sys.argv) < 2:
 	print 'No parameter specified.'

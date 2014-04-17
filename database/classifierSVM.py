@@ -23,7 +23,7 @@ class ClassifierSVM():
 	# il va retourne un map avec un cle 'keyWords' : une liste des mots cles
 	# un cle 'data': une matrice presente les valeurs TFIDF pour chaque tweets
 	# un cle 'classes': une liste presente les classe de chaque tweet
-	def getDataForModelBuilding(self,nbTweets):		
+	def getDataForModelBuilding(self):		
 		tweets = self.twitter.getTweetsTreated()
 		
 		#liste les mots apparaissant dans les tweets avec leur frequence. ex : mot 'toto', 5
@@ -72,7 +72,7 @@ class ClassifierSVM():
 		# afin de choisir celui qui apporte plus d'information
 		map_IG = self.informationGain(mapExistanceWords,classe)
 			
-		'''# ecrire les valeur de gain dans un ficher pour debug
+		# ecrire les valeur de gain dans un ficher pour debug
 		valueIGSortedKey = sorted(map_IG,key=map_IG.__getitem__,reverse=True)
 		file = open('IG_values.txt','w')
 		for k in valueIGSortedKey:
@@ -80,9 +80,10 @@ class ClassifierSVM():
 			file.write('\t\t')
 			file.write(repr(map_IG[k]))
 			file.write('\n')
-		file.close()'''
+		file.close()
 		
-		data_Matrix = self.rangeDataMatrix(map_TFIDF,map_IG,0.01)
+		#on prend 60% des cles les plus importantes
+		data_Matrix = self.rangeDataMatrix(map_TFIDF,map_IG,0.6)
 		# on ajoute un cle 'classes' pour dire chaque tweet est de quelle classe
 		data_Matrix['classes'] = classe
 		data_Matrix['existanceWords'] = mapExistanceWords
@@ -182,10 +183,13 @@ class ClassifierSVM():
 	# une clé 'data': une matrice présente les valeurs TFIDF pour chaque tweets
 	def	rangeDataMatrix(self,map_TFIDF,map_IG,threshold):
 		#print '*************rangeDataMatrix******************'
+		keyIGSorted = sorted(map_IG,key=map_IG.__getitem__,reverse=True)
+		keyIGSelected = keyIGSorted[0:int(threshold*len(keyIGSorted))]
+		
 		# supprimer les mots cles dont le gain est plus petit qu'un seuil
 		for (keyWord,IG_value) in map_IG.items():
-			if IG_value < threshold:
-				map_TFIDF.pop(keyWord)
+			if keyWord not in keyIGSelected:
+				map_TFIDF.pop(keyWord)				
 				
 		# ranger la matrice de data
 		nbTweets = len(map_TFIDF.itervalues().next())
@@ -207,20 +211,47 @@ class ClassifierSVM():
 	
 	# construire la model a partir les donnees d'apprentissage
 	def buildModel(self):
-		dataTweets = self.getDataForModelBuilding(20)
-		print 'nb mots cles choisit: ',len(dataTweets['keyWords'])
+		dataTweets = self.getDataForModelBuilding()
 		print 'nb de tweet analyse: ',len(dataTweets['classes'])
+		print 'nb mots cles choisit: ',len(dataTweets['keyWords'])
 		
-		#######apprentissage et test -- cross validation #######		
+		
+		'''#######apprentissage et test -- cross validation #######		
 		#self.model = self.svm.fit(dataTweets['data'],dataTweets['classes'])
 		
-		data_train,data_test,target_train,target_test = cross_validation.train_test_split(dataTweets['data'], dataTweets['classes'], test_size=0.5, random_state=0)
-		self.model = self.svm.fit(data_train,target_train)
+		data_train,data_test,target_train,target_test = cross_validation.train_test_split(dataTweets['data'], dataTweets['classes'], test_size=0.1, random_state=0)
+		self.model = self.svm.fit(data_train,target_train)'''
+		
+		# validation croisee avec k-fold
+		datas = dataTweets['data']
+		classes = dataTweets['classes']
+		kfold = cross_validation.KFold(len(classes),n_folds=20)
+		bestScore = 0
+		dTrain = []
+		cTrain = []
+		dTest = []
+		cTest = []
+		print '\nScores pour la validation croisee avec k-fold :'
+		for train_indices, test_indices in kfold:
+			datasTrain = [datas[i] for i in train_indices]
+			classesTrain = [classes[i] for i in train_indices]
+			datasTest = [datas[i] for i in test_indices]
+			classesTest = [classes[i] for i in test_indices]
+			score = self.svm.fit(datasTrain,classesTrain).score(datasTest,classesTest)
+			if score > bestScore:
+				dTrain = datasTrain
+				cTrain = classesTrain
+				dTest = datasTest
+				cTest = classesTest
+				bestScore = score
+			print self.svm.fit(datasTrain,classesTrain).score(datasTest,classesTest)
+		
+		self.model = self.svm.fit(dTrain,cTrain)
 		
 		#------- TEST load -------
 		joblib.dump(self.model,"tweetsModel.pkl")
 		self.model = joblib.load("tweetsModel.pkl")
-		print 'score : ',self.model.score(data_test,target_test)
+		print '\nMeilleure Score de validation croisee: ',self.model.score(dTest,cTest)
 
 		joblib.dump(dataTweets,"dataTweets.pkl")
 		return
